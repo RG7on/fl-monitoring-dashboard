@@ -242,27 +242,19 @@
 
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
-                <div class="stat-value" id="totalAgents">-</div>
-                <div class="stat-label">Total Agents</div>
+                <div class="stat-value" id="readyAgents">-</div>
+                <div class="stat-label">✅ Ready Agents</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="availableAgents">-</div>
-                <div class="stat-label">Available</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="busyAgents">-</div>
-                <div class="stat-label">Busy</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="awayAgents">-</div>
-                <div class="stat-label">Away</div>
+                <div class="stat-value" id="notReadyAgents">-</div>
+                <div class="stat-label">⏸️ Not Ready</div>
             </div>
         </div>
 
         <div class="agents-container">
-            <div class="agents-header">👥 Agents</div>
-            <div id="agentsList">
-                <div class="loading">Loading agents</div>
+            <div class="agents-header">📊 Queue Statistics</div>
+            <div id="queueInfo" style="padding: 20px; text-align: center; color: #666;">
+                <div class="loading">Waiting for data</div>
             </div>
         </div>
     </div>
@@ -317,40 +309,22 @@
                     `Last update: ${updateTime.toLocaleTimeString()}`;
             }
 
-            // Update agents list
-            if (data.agents && Array.isArray(data.agents)) {
-                const agentsList = document.getElementById('agentsList');
-                agentsList.innerHTML = '';
-
-                // Calculate stats
-                let available = 0, busy = 0, away = 0;
-
-                data.agents.forEach(agent => {
-                    const statusLower = agent.status.toLowerCase();
-                    if (statusLower === 'available') available++;
-                    else if (statusLower === 'busy') busy++;
-                    else if (statusLower === 'away') away++;
-
-                    const agentCard = document.createElement('div');
-                    agentCard.className = 'agent-card';
-                    agentCard.innerHTML = `
-                        <div class="agent-info">
-                            <div class="agent-name">${escapeHtml(agent.name)}</div>
-                            <div class="agent-duration">⏱️ ${escapeHtml(agent.duration)}</div>
-                        </div>
-                        <div class="agent-status ${statusLower}">${escapeHtml(agent.status)}</div>
-                    `;
-                    agentsList.appendChild(agentCard);
-                });
-
-                // Update stats
-                document.getElementById('totalAgents').textContent = data.agents.length;
-                document.getElementById('availableAgents').textContent = available;
-                document.getElementById('busyAgents').textContent = busy;
-                document.getElementById('awayAgents').textContent = away;
+            // Update queue statistics
+            if (data.queue) {
+                document.getElementById('readyAgents').textContent = data.queue.ready || '-';
+                document.getElementById('notReadyAgents').textContent = data.queue.not_ready || '-';
+                
+                document.getElementById('queueInfo').innerHTML = `
+                    <div style="font-size: 16px; color: #333; margin-bottom: 10px;">
+                        <strong>Ready:</strong> ${escapeHtml(data.queue.ready || '0')} agents
+                    </div>
+                    <div style="font-size: 16px; color: #333;">
+                        <strong>Not Ready:</strong> ${escapeHtml(data.queue.not_ready || '0')} agents
+                    </div>
+                `;
             } else {
-                document.getElementById('agentsList').innerHTML = 
-                    '<div style="text-align: center; padding: 20px; color: #666;">No agents found</div>';
+                document.getElementById('queueInfo').innerHTML = 
+                    '<div style="text-align: center; padding: 20px; color: #666;">No queue data available</div>';
             }
         }
 
