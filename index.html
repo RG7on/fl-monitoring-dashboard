@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FL Monitoring Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <title>FL Monitoring</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
     <style>
         * {
             margin: 0;
@@ -12,29 +19,32 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
         .header {
             background: white;
-            padding: 20px;
+            padding: 15px 20px;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .header h1 {
             color: #333;
-            font-size: 24px;
+            font-size: 20px;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .status-bar {
@@ -42,14 +52,14 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
 
         .status-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 14px;
+            gap: 6px;
+            font-size: 13px;
             color: #666;
         }
 
@@ -57,214 +67,214 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            animation: pulse 2s infinite;
         }
 
         .status-dot.active {
             background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.warning {
+            background: #f59e0b;
+            animation: pulse 1s infinite;
         }
 
         .status-dot.error {
             background: #ef4444;
-            animation: none;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .last-update {
-            font-size: 12px;
-            color: #999;
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .stat-card {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 25px 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:active {
+            transform: scale(0.98);
+        }
+
+        .stat-card.ready {
+            border-left: 4px solid #10b981;
+        }
+
+        .stat-card.not-ready {
+            border-left: 4px solid #f59e0b;
         }
 
         .stat-value {
-            font-size: 32px;
+            font-size: 48px;
             font-weight: bold;
-            color: #667eea;
             margin-bottom: 5px;
+            line-height: 1;
+        }
+
+        .stat-card.ready .stat-value {
+            color: #10b981;
+        }
+
+        .stat-card.not-ready .stat-value {
+            color: #f59e0b;
         }
 
         .stat-label {
             font-size: 14px;
             color: #666;
+            font-weight: 500;
         }
 
-        .agents-container {
+        .info-card {
             background: white;
             border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
         }
 
-        .agents-header {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .agent-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
+        .info-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            transition: transform 0.2s, box-shadow 0.2s;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
         }
 
-        .agent-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        .info-row:last-child {
+            border-bottom: none;
         }
 
-        .agent-info {
-            flex: 1;
-        }
-
-        .agent-name {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .agent-duration {
-            font-size: 12px;
+        .info-label {
             color: #666;
         }
 
-        .agent-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
+        .info-value {
+            color: #333;
+            font-weight: 500;
         }
 
-        .agent-status.available {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .agent-status.busy {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .agent-status.away {
+        .stale-warning {
             background: #fef3c7;
+            border: 1px solid #f59e0b;
             color: #92400e;
-        }
-
-        .error-message {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 4px solid #ef4444;
-        }
-
-        .loading {
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
             text-align: center;
-            padding: 40px;
+        }
+
+        .stale-warning.show {
+            display: block;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .offline-banner {
+            background: #ef4444;
             color: white;
-            font-size: 18px;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
         }
 
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
+        .offline-banner.show {
+            display: block;
         }
 
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+        /* Pull to refresh indicator */
+        .refresh-hint {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-top: 20px;
         }
 
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .header h1 {
-                font-size: 20px;
-            }
-
-            .agent-card {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-
+        @media (max-width: 400px) {
             .stat-value {
-                font-size: 24px;
+                font-size: 40px;
             }
         }
     </style>
 </head>
 <body>
+    <div class="offline-banner" id="offlineBanner">
+        📡 You are offline - showing last known data
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1>📊 FL Monitoring Dashboard</h1>
+            <h1>📊 FL Monitoring</h1>
             <div class="status-bar">
                 <div class="status-item">
                     <div class="status-dot active" id="statusDot"></div>
                     <span id="statusText">Connecting...</span>
                 </div>
-                <div class="last-update" id="lastUpdate">Last update: Never</div>
+                <div class="status-item" id="lastUpdate">--:--:--</div>
             </div>
         </div>
 
-        <div id="errorMessage" style="display: none;" class="error-message"></div>
+        <div class="stale-warning" id="staleWarning">
+            ⚠️ Data is more than 60 seconds old - scraper may be down
+        </div>
 
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
+        <div class="stats-grid">
+            <div class="stat-card ready">
                 <div class="stat-value" id="readyAgents">-</div>
-                <div class="stat-label">✅ Ready Agents</div>
+                <div class="stat-label">✅ Ready</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card not-ready">
                 <div class="stat-value" id="notReadyAgents">-</div>
                 <div class="stat-label">⏸️ Not Ready</div>
             </div>
         </div>
 
-        <div class="agents-container">
-            <div class="agents-header">📊 Queue Statistics</div>
-            <div id="queueInfo" style="padding: 20px; text-align: center; color: #666;">
-                <div class="loading">Waiting for data</div>
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">Scraper Uptime</span>
+                <span class="info-value" id="scraperUptime">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Total Scrapes</span>
+                <span class="info-value" id="totalScrapes">--</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Status</span>
+                <span class="info-value" id="scraperStatus">--</span>
             </div>
         </div>
+
+        <p class="refresh-hint">Real-time updates • No refresh needed</p>
     </div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Your Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBTu9pCOv7URAED3566XOr0RwMZ-AeysTI",
             authDomain: "fl-dashboard-monitoring.firebaseapp.com",
@@ -275,77 +285,78 @@
             appId: "1:474990046608:web:5ea6af750f937b08695715"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-
-        // Reference to dashboard data
         const dashboardRef = ref(database, 'dashboard_data');
 
-        // Listen for real-time updates
+        let lastUpdateTime = null;
+
+        // Check for stale data every 10 seconds
+        setInterval(() => {
+            if (lastUpdateTime) {
+                const secondsAgo = (Date.now() - lastUpdateTime) / 1000;
+                const staleWarning = document.getElementById('staleWarning');
+                
+                if (secondsAgo > 60) {
+                    staleWarning.classList.add('show');
+                    updateStatus('warning', 'Data stale');
+                } else {
+                    staleWarning.classList.remove('show');
+                }
+            }
+        }, 10000);
+
+        // Offline detection
+        window.addEventListener('online', () => {
+            document.getElementById('offlineBanner').classList.remove('show');
+        });
+        
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.add('show');
+        });
+
+        // Real-time listener
         onValue(dashboardRef, (snapshot) => {
             const data = snapshot.val();
             
             if (data) {
                 updateDashboard(data);
-                updateStatus('active', 'Connected');
+                updateStatus('active', 'Live');
+                lastUpdateTime = Date.now();
+                document.getElementById('staleWarning').classList.remove('show');
             } else {
-                updateStatus('error', 'No data available');
+                updateStatus('error', 'No data');
             }
         }, (error) => {
             console.error('Firebase error:', error);
-            updateStatus('error', 'Connection error');
-            showError('Failed to connect to Firebase: ' + error.message);
+            updateStatus('error', 'Error');
         });
 
         function updateDashboard(data) {
-            // Hide error message
-            document.getElementById('errorMessage').style.display = 'none';
-
-            // Update last update time
+            // Update time
             if (data.last_updated) {
-                const updateTime = new Date(data.last_updated);
-                document.getElementById('lastUpdate').textContent = 
-                    `Last update: ${updateTime.toLocaleTimeString()}`;
+                const time = new Date(data.last_updated).toLocaleTimeString();
+                document.getElementById('lastUpdate').textContent = time;
             }
 
-            // Update queue statistics
+            // Update queue stats
             if (data.queue) {
-                document.getElementById('readyAgents').textContent = data.queue.ready || '-';
-                document.getElementById('notReadyAgents').textContent = data.queue.not_ready || '-';
-                
-                document.getElementById('queueInfo').innerHTML = `
-                    <div style="font-size: 16px; color: #333; margin-bottom: 10px;">
-                        <strong>Ready:</strong> ${escapeHtml(data.queue.ready || '0')} agents
-                    </div>
-                    <div style="font-size: 16px; color: #333;">
-                        <strong>Not Ready:</strong> ${escapeHtml(data.queue.not_ready || '0')} agents
-                    </div>
-                `;
-            } else {
-                document.getElementById('queueInfo').innerHTML = 
-                    '<div style="text-align: center; padding: 20px; color: #666;">No queue data available</div>';
+                document.getElementById('readyAgents').textContent = data.queue.ready || '0';
+                document.getElementById('notReadyAgents').textContent = data.queue.not_ready || '0';
             }
+
+            // Update scraper info
+            document.getElementById('scraperUptime').textContent = data.scraper_uptime || '--';
+            document.getElementById('totalScrapes').textContent = data.total_scrapes || '--';
+            document.getElementById('scraperStatus').textContent = data.status === 'active' ? '🟢 Active' : '🔴 Error';
         }
 
         function updateStatus(status, text) {
-            const statusDot = document.getElementById('statusDot');
+            const dot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
             
-            statusDot.className = `status-dot ${status}`;
+            dot.className = 'status-dot ' + status;
             statusText.textContent = text;
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
     </script>
 </body>
