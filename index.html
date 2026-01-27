@@ -90,15 +90,15 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
             margin-bottom: 15px;
         }
 
         .stat-card {
             background: white;
-            padding: 25px 15px;
-            border-radius: 15px;
+            padding: 15px 10px;
+            border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             text-align: center;
             transition: transform 0.2s;
@@ -108,31 +108,39 @@
             transform: scale(0.98);
         }
 
-        .stat-card.ready {
+        .stat-card.queue {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .stat-card.agents {
             border-left: 4px solid #10b981;
         }
 
-        .stat-card.not-ready {
-            border-left: 4px solid #f59e0b;
+        .stat-card.abandoned {
+            border-left: 4px solid #ef4444;
         }
 
         .stat-value {
-            font-size: 48px;
+            font-size: 32px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             line-height: 1;
         }
 
-        .stat-card.ready .stat-value {
+        .stat-card.queue .stat-value {
+            color: #3b82f6;
+        }
+
+        .stat-card.agents .stat-value {
             color: #10b981;
         }
 
-        .stat-card.not-ready .stat-value {
-            color: #f59e0b;
+        .stat-card.abandoned .stat-value {
+            color: #ef4444;
         }
 
         .stat-label {
-            font-size: 14px;
+            font-size: 11px;
             color: #666;
             font-weight: 500;
         }
@@ -142,6 +150,135 @@
             border-radius: 15px;
             padding: 15px 20px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 15px;
+        }
+
+        .info-card h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .call-types-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .call-type-item {
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .call-type-header {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .call-type-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .call-type-stat {
+            text-align: center;
+        }
+
+        .call-type-stat-value {
+            font-weight: bold;
+            font-size: 18px;
+            display: block;
+        }
+
+        .call-type-stat-label {
+            color: #666;
+            font-size: 10px;
+        }
+
+        .agent-group {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            margin-bottom: 15px;
+        }
+
+        .agent-group h4 {
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .agent-table {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .agent-row {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .agent-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            color: #666;
+            font-size: 11px;
+        }
+
+        .agent-state {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            display: inline-block;
+            font-weight: 500;
+        }
+
+        .agent-state.talking {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .agent-state.ready {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .agent-state.not-ready {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .info-row {
@@ -216,8 +353,32 @@
 
         @media (max-width: 400px) {
             .stat-value {
-                font-size: 40px;
+                font-size: 28px;
             }
+            .stats-grid {
+                gap: 8px;
+            }
+            .call-type-stat-value {
+                font-size: 16px;
+            }
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin-top: 5px;
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -242,18 +403,39 @@
             ⚠️ Data is more than 60 seconds old - scraper may be down
         </div>
 
+        <!-- Totals Summary -->
         <div class="stats-grid">
-            <div class="stat-card ready">
-                <div class="stat-value" id="readyAgents">-</div>
-                <div class="stat-label">✅ Ready</div>
+            <div class="stat-card queue">
+                <div class="stat-value" id="totalQueue">-</div>
+                <div class="stat-label">📞 In Queue</div>
             </div>
-            <div class="stat-card not-ready">
-                <div class="stat-value" id="notReadyAgents">-</div>
-                <div class="stat-label">⏸️ Not Ready</div>
+            <div class="stat-card agents">
+                <div class="stat-value" id="totalAgents">-</div>
+                <div class="stat-label">👥 On Call</div>
+            </div>
+            <div class="stat-card abandoned">
+                <div class="stat-value" id="totalAbandoned">-</div>
+                <div class="stat-label">❌ Abandoned</div>
             </div>
         </div>
 
+        <!-- Call Types Section -->
+        <h2 class="section-title">📋 Call Types</h2>
         <div class="info-card">
+            <div id="callTypesList" class="call-types-list">
+                <div class="no-data">Loading call types...</div>
+            </div>
+        </div>
+
+        <!-- Agent Status Section -->
+        <h2 class="section-title">👥 Agent Status</h2>
+        <div id="agentGroups">
+            <div class="no-data">Loading agents...</div>
+        </div>
+
+        <!-- Scraper Info -->
+        <div class="info-card">
+            <h3>ℹ️ System Info</h3>
             <div class="info-row">
                 <span class="info-label">Scraper Uptime</span>
                 <span class="info-value" id="scraperUptime">--</span>
@@ -339,10 +521,88 @@
                 document.getElementById('lastUpdate').textContent = time;
             }
 
-            // Update queue stats
-            if (data.queue) {
-                document.getElementById('readyAgents').textContent = data.queue.ready || '0';
-                document.getElementById('notReadyAgents').textContent = data.queue.not_ready || '0';
+            // Update totals
+            if (data.totals) {
+                document.getElementById('totalQueue').textContent = data.totals.total_queue_now || '0';
+                document.getElementById('totalAgents').textContent = data.totals.total_cce_agent_now || '0';
+                document.getElementById('totalAbandoned').textContent = data.totals.total_aban_today || '0';
+            }
+
+            // Update call types
+            if (data.call_types && data.call_types.length > 0) {
+                const callTypesList = document.getElementById('callTypesList');
+                callTypesList.innerHTML = '';
+                
+                data.call_types.forEach(ct => {
+                    const item = document.createElement('div');
+                    item.className = 'call-type-item';
+                    item.innerHTML = `
+                        <div class="call-type-header">${ct.call_type_name}</div>
+                        <div class="call-type-stats">
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #3b82f6;">${ct.queue_now}</span>
+                                <span class="call-type-stat-label">Queue</span>
+                            </div>
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #10b981;">${ct.cce_agent_now}</span>
+                                <span class="call-type-stat-label">Agents</span>
+                            </div>
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #ef4444;">${ct.total_aban_today}</span>
+                                <span class="call-type-stat-label">Abandoned</span>
+                            </div>
+                        </div>
+                    `;
+                    callTypesList.appendChild(item);
+                });
+            } else {
+                document.getElementById('callTypesList').innerHTML = '<div class="no-data">No call types data</div>';
+            }
+
+            // Update agents by group
+            if (data.agents) {
+                const agentGroups = document.getElementById('agentGroups');
+                agentGroups.innerHTML = '';
+                
+                const groupOrder = ['GENIT_SG', 'RTPS_SG', 'SAP_SG', 'Subsurface_SG', 'Telcom_SG'];
+                
+                groupOrder.forEach(groupName => {
+                    if (data.agents[groupName] && data.agents[groupName].length > 0) {
+                        const groupDiv = document.createElement('div');
+                        groupDiv.className = 'agent-group';
+                        
+                        let agentRows = '';
+                        data.agents[groupName].forEach(agent => {
+                            const stateClass = agent.state.toLowerCase().includes('talking') ? 'talking' : 
+                                             agent.state.toLowerCase().includes('ready') ? 'ready' : 'not-ready';
+                            
+                            agentRows += `
+                                <div class="agent-row">
+                                    <div class="agent-name">${agent.name}</div>
+                                    <div class="agent-details">
+                                        <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
+                                        <div>Duration: ${agent.duration}</div>
+                                        <div>Login: ${agent.logon_time}</div>
+                                        <div>Reason: ${agent.reason_code || 'N/A'}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        groupDiv.innerHTML = `
+                            <h4>📁 ${groupName.replace('_SG', '')} (${data.agents[groupName].length})</h4>
+                            <div class="agent-table">${agentRows}</div>
+                        `;
+                        
+                        agentGroups.appendChild(groupDiv);
+                    }
+                });
+                
+                if (agentGroups.innerHTML === '') {
+                    agentGroups.innerHTML = '<div class="no-data">No agents data</div>';
+                }
+            } else {
+                document.getElementById('agentGroups').innerHTML = '<div class="no-data">No agents data</div>';
             }
 
             // Update scraper info
