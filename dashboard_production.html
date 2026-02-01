@@ -591,20 +591,20 @@
                     
                     item.innerHTML = `
                         <div class="call-type-header">
-                            <span>${ct.name}</span>
+                            <span>${ct.name || 'Unknown'}</span>
                             <span class="expand-icon">▼</span>
                         </div>
                         <div class="call-type-stats">
                             <div class="call-type-stat">
-                                <span class="call-type-stat-value" style="color: #3b82f6;">${ct.queue_now}</span>
+                                <span class="call-type-stat-value" style="color: #3b82f6;">${ct.queue_now || '0'}</span>
                                 <span class="call-type-stat-label">Queue</span>
                             </div>
                             <div class="call-type-stat">
-                                <span class="call-type-stat-value" style="color: #10b981;">${ct.cce_agent_now}</span>
+                                <span class="call-type-stat-value" style="color: #10b981;">${ct.cce_agent_now || '0'}</span>
                                 <span class="call-type-stat-label">On Call</span>
                             </div>
                             <div class="call-type-stat">
-                                <span class="call-type-stat-value" style="color: #ef4444;">${ct.total_aban_today}</span>
+                                <span class="call-type-stat-value" style="color: #ef4444;">${ct.total_aban_today || '0'}</span>
                                 <span class="call-type-stat-label">Abandoned</span>
                             </div>
                         </div>
@@ -649,11 +649,11 @@
                             const agentRow = document.createElement('div');
                             agentRow.className = 'agent-row-compact';
                             agentRow.innerHTML = `
-                                <div class="agent-name">${agent.name}</div>
+                                <div class="agent-name">${agent.name || 'Unknown'}</div>
                                 <div class="agent-details">
-                                    <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
-                                    <div>Duration: ${agent.duration}</div>
-                                    <div>Login: ${agent.logon_time}</div>
+                                    <div>State: <span class="agent-state ${stateClass}">${agent.state || 'N/A'}</span></div>
+                                    <div>Duration: ${agent.duration || '00:00:00'}</div>
+                                    <div>Login: ${agent.logon_time || 'N/A'}</div>
                                     <div>Reason: ${agent.reason_code || 'N/A'}</div>
                                 </div>
                             `;
@@ -683,17 +683,26 @@
                             if (agentsList && !agentsList.dataset.loaded) {
                                 agentsList.innerHTML = '';
                                 agents.forEach(agent => {
-                                    const stateClass = agent.state.toLowerCase().includes('talking') ? 'talking' : 
-                                                     agent.state.toLowerCase().includes('ready') && !agent.state.toLowerCase().includes('not') ? 'ready' : 'not-ready';
+                                    const state = agent.state.toLowerCase();
+                                    let stateClass = 'not-ready';
+                                    if (state.includes('ready') && !state.includes('not')) {
+                                        stateClass = 'ready';
+                                    } else if (state.includes('talking')) {
+                                        stateClass = 'talking';
+                                    } else if (state.includes('busy')) {
+                                        stateClass = 'busy';
+                                    } else if (state.includes('not ready')) {
+                                        stateClass = 'not-ready';
+                                    }
                                     
                                     const agentRow = document.createElement('div');
                                     agentRow.className = 'agent-row-compact';
                                     agentRow.innerHTML = `
-                                        <div class="agent-name">${agent.name}</div>
+                                        <div class="agent-name">${agent.name || 'Unknown'}</div>
                                         <div class="agent-details">
-                                            <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
-                                            <div>Duration: ${agent.duration}</div>
-                                            <div>Login: ${agent.logon_time}</div>
+                                            <div>State: <span class="agent-state ${stateClass}">${agent.state || 'N/A'}</span></div>
+                                            <div>Duration: ${agent.duration || '00:00:00'}</div>
+                                            <div>Login: ${agent.logon_time || 'N/A'}</div>
                                             <div>Reason: ${agent.reason_code || 'N/A'}</div>
                                         </div>
                                     `;
