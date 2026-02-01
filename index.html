@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#667eea">
-    <title>FL Monitoring</title>
+    <title>Watchtower</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -173,6 +173,12 @@
             padding: 12px;
             border-radius: 8px;
             border-left: 3px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .call-type-item:hover {
+            background: #f3f4f6;
         }
 
         .call-type-header {
@@ -180,13 +186,37 @@
             color: #333;
             margin-bottom: 8px;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .expand-icon {
+            font-size: 12px;
+            color: #667eea;
+            transition: transform 0.2s;
+        }
+
+        .call-type-item.expanded .expand-icon {
+            transform: rotate(180deg);
         }
 
         .call-type-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
             font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .call-type-stats-extended {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            font-size: 12px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
         }
 
         .call-type-stat {
@@ -204,34 +234,33 @@
             font-size: 10px;
         }
 
-        .agent-group {
+        .agents-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .call-type-item.expanded .agents-container {
+            max-height: 2000px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        .agents-list {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #667eea;
+        }
+
+        .agent-row-compact {
             background: white;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-            margin-bottom: 15px;
-        }
-
-        .agent-group h4 {
-            font-size: 14px;
-            color: #667eea;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .agent-table {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .agent-row {
-            background: #f9fafb;
-            padding: 10px;
+            padding: 8px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+
+        .agent-row-compact:last-child {
+            margin-bottom: 0;
         }
 
         .agent-name {
@@ -257,18 +286,23 @@
         }
 
         .agent-state.talking {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .agent-state.ready {
             background: #dcfce7;
             color: #166534;
         }
 
-        .agent-state.ready {
-            background: #dbeafe;
-            color: #1e40af;
+        .agent-state.not-ready {
+            background: #fee2e2;
+            color: #991b1b;
         }
 
-        .agent-state.not-ready {
-            background: #fef3c7;
-            color: #92400e;
+        .agent-state.busy {
+            background: #ede9fe;
+            color: #6b21a8;
         }
 
         .section-title {
@@ -343,7 +377,6 @@
             display: block;
         }
 
-        /* Pull to refresh indicator */
         .refresh-hint {
             text-align: center;
             color: rgba(255,255,255,0.7);
@@ -369,17 +402,6 @@
             color: #666;
             font-size: 13px;
         }
-
-        .collapse-btn {
-            background: none;
-            border: none;
-            color: #667eea;
-            font-size: 12px;
-            cursor: pointer;
-            padding: 5px 10px;
-            margin-top: 5px;
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -389,7 +411,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 FL Monitoring</h1>
+            <h1>♜ Watchtower</h1>
             <div class="status-bar">
                 <div class="status-item">
                     <div class="status-dot active" id="statusDot"></div>
@@ -425,12 +447,6 @@
             <div id="callTypesList" class="call-types-list">
                 <div class="no-data">Loading call types...</div>
             </div>
-        </div>
-
-        <!-- Agent Status Section -->
-        <h2 class="section-title">👥 Agent Status</h2>
-        <div id="agentGroups">
-            <div class="no-data">Loading agents...</div>
         </div>
 
         <!-- Scraper Info -->
@@ -472,6 +488,7 @@
         const dashboardRef = ref(database, 'dashboard_data');
 
         let lastUpdateTime = null;
+        let expandedCallTypes = new Set(); // Track which call types are expanded
 
         // Check for stale data every 10 seconds
         setInterval(() => {
@@ -528,16 +545,54 @@
                 document.getElementById('totalAbandoned').textContent = data.totals.total_aban_today || '0';
             }
 
-            // Update call types
+            // Update call types with agent counts
             if (data.call_types && data.call_types.length > 0) {
                 const callTypesList = document.getElementById('callTypesList');
                 callTypesList.innerHTML = '';
                 
                 data.call_types.forEach(ct => {
+                    // Map call type to agent group
+                    const groupMap = {
+                        'General_IT_CT': 'GENIT_SG',
+                        'RTPS_CT': 'RTPS_SG',
+                        'SAP_CT': 'SAP_SG',
+                        'Subsurface_CT': 'Subsurface_SG',
+                        'Telcom_CT': 'Telcom_SG'
+                    };
+                    
+                    const groupName = groupMap[ct.name];
+                    const agents = (data.agents && groupName && data.agents[groupName]) ? data.agents[groupName] : [];
+                    
+                    // Count agent states
+                    let readyCount = 0;
+                    let notReadyCount = 0;
+                    let busyOtherCount = 0;
+                    
+                    agents.forEach(agent => {
+                        const state = agent.state.toLowerCase();
+                        if (state.includes('ready') && !state.includes('not')) {
+                            readyCount++;
+                        } else if (state.includes('not ready')) {
+                            notReadyCount++;
+                        } else if (state.includes('busy')) {
+                            busyOtherCount++;
+                        }
+                    });
+                    
                     const item = document.createElement('div');
                     item.className = 'call-type-item';
+                    
+                    // Check if this call type was previously expanded
+                    const wasExpanded = expandedCallTypes.has(ct.name);
+                    if (wasExpanded) {
+                        item.classList.add('expanded');
+                    }
+                    
                     item.innerHTML = `
-                        <div class="call-type-header">${ct.call_type_name}</div>
+                        <div class="call-type-header">
+                            <span>${ct.name}</span>
+                            <span class="expand-icon">▼</span>
+                        </div>
                         <div class="call-type-stats">
                             <div class="call-type-stat">
                                 <span class="call-type-stat-value" style="color: #3b82f6;">${ct.queue_now}</span>
@@ -545,64 +600,113 @@
                             </div>
                             <div class="call-type-stat">
                                 <span class="call-type-stat-value" style="color: #10b981;">${ct.cce_agent_now}</span>
-                                <span class="call-type-stat-label">Agents</span>
+                                <span class="call-type-stat-label">On Call</span>
                             </div>
                             <div class="call-type-stat">
                                 <span class="call-type-stat-value" style="color: #ef4444;">${ct.total_aban_today}</span>
                                 <span class="call-type-stat-label">Abandoned</span>
                             </div>
                         </div>
+                        <div class="call-type-stats-extended">
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #0ea5e9;">${readyCount}</span>
+                                <span class="call-type-stat-label">Ready</span>
+                            </div>
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #f59e0b;">${notReadyCount}</span>
+                                <span class="call-type-stat-label">Not Ready</span>
+                            </div>
+                            <div class="call-type-stat">
+                                <span class="call-type-stat-value" style="color: #8b5cf6;">${busyOtherCount}</span>
+                                <span class="call-type-stat-label">Busy Other</span>
+                            </div>
+                        </div>
+                        <div class="agents-container">
+                            <div class="agents-list" id="agents-${ct.name}">
+                                ${agents.length === 0 ? '<div class="no-data">No agents in this group</div>' : ''}
+                            </div>
+                        </div>
                     `;
+                    
+                    // If it was expanded, load agents immediately
+                    if (wasExpanded && agents.length > 0) {
+                        const agentsList = item.querySelector(`#agents-${ct.name}`);
+                        agentsList.innerHTML = '';
+                        agents.forEach(agent => {
+                            const state = agent.state.toLowerCase();
+                            let stateClass = 'not-ready';
+                            if (state.includes('ready') && !state.includes('not')) {
+                                stateClass = 'ready';
+                            } else if (state.includes('talking')) {
+                                stateClass = 'talking';
+                            } else if (state.includes('busy')) {
+                                stateClass = 'busy';
+                            } else if (state.includes('not ready')) {
+                                stateClass = 'not-ready';
+                            }
+                            
+                            const agentRow = document.createElement('div');
+                            agentRow.className = 'agent-row-compact';
+                            agentRow.innerHTML = `
+                                <div class="agent-name">${agent.name}</div>
+                                <div class="agent-details">
+                                    <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
+                                    <div>Duration: ${agent.duration}</div>
+                                    <div>Login: ${agent.logon_time}</div>
+                                    <div>Reason: ${agent.reason_code || 'N/A'}</div>
+                                </div>
+                            `;
+                            agentsList.appendChild(agentRow);
+                        });
+                        agentsList.dataset.loaded = 'true';
+                    }
+                    
+                    // Add click handler to toggle expansion
+                    item.addEventListener('click', (e) => {
+                        // Don't collapse if clicking on agent details
+                        if (e.target.closest('.agent-row-compact')) return;
+                        
+                        const isExpanding = !item.classList.contains('expanded');
+                        item.classList.toggle('expanded');
+                        
+                        // Track expanded state
+                        if (isExpanding) {
+                            expandedCallTypes.add(ct.name);
+                        } else {
+                            expandedCallTypes.delete(ct.name);
+                        }
+                        
+                        // Load agents if expanding for first time
+                        if (item.classList.contains('expanded') && agents.length > 0) {
+                            const agentsList = item.querySelector(`#agents-${ct.name}`);
+                            if (agentsList && !agentsList.dataset.loaded) {
+                                agentsList.innerHTML = '';
+                                agents.forEach(agent => {
+                                    const stateClass = agent.state.toLowerCase().includes('talking') ? 'talking' : 
+                                                     agent.state.toLowerCase().includes('ready') && !agent.state.toLowerCase().includes('not') ? 'ready' : 'not-ready';
+                                    
+                                    const agentRow = document.createElement('div');
+                                    agentRow.className = 'agent-row-compact';
+                                    agentRow.innerHTML = `
+                                        <div class="agent-name">${agent.name}</div>
+                                        <div class="agent-details">
+                                            <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
+                                            <div>Duration: ${agent.duration}</div>
+                                            <div>Login: ${agent.logon_time}</div>
+                                            <div>Reason: ${agent.reason_code || 'N/A'}</div>
+                                        </div>
+                                    `;
+                                    agentsList.appendChild(agentRow);
+                                });
+                                agentsList.dataset.loaded = 'true';
+                            }
+                        }
+                    });
+                    
                     callTypesList.appendChild(item);
                 });
             } else {
                 document.getElementById('callTypesList').innerHTML = '<div class="no-data">No call types data</div>';
-            }
-
-            // Update agents by group
-            if (data.agents) {
-                const agentGroups = document.getElementById('agentGroups');
-                agentGroups.innerHTML = '';
-                
-                const groupOrder = ['GENIT_SG', 'RTPS_SG', 'SAP_SG', 'Subsurface_SG', 'Telcom_SG'];
-                
-                groupOrder.forEach(groupName => {
-                    if (data.agents[groupName] && data.agents[groupName].length > 0) {
-                        const groupDiv = document.createElement('div');
-                        groupDiv.className = 'agent-group';
-                        
-                        let agentRows = '';
-                        data.agents[groupName].forEach(agent => {
-                            const stateClass = agent.state.toLowerCase().includes('talking') ? 'talking' : 
-                                             agent.state.toLowerCase().includes('ready') ? 'ready' : 'not-ready';
-                            
-                            agentRows += `
-                                <div class="agent-row">
-                                    <div class="agent-name">${agent.name}</div>
-                                    <div class="agent-details">
-                                        <div>State: <span class="agent-state ${stateClass}">${agent.state}</span></div>
-                                        <div>Duration: ${agent.duration}</div>
-                                        <div>Login: ${agent.logon_time}</div>
-                                        <div>Reason: ${agent.reason_code || 'N/A'}</div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        groupDiv.innerHTML = `
-                            <h4>📁 ${groupName.replace('_SG', '')} (${data.agents[groupName].length})</h4>
-                            <div class="agent-table">${agentRows}</div>
-                        `;
-                        
-                        agentGroups.appendChild(groupDiv);
-                    }
-                });
-                
-                if (agentGroups.innerHTML === '') {
-                    agentGroups.innerHTML = '<div class="no-data">No agents data</div>';
-                }
-            } else {
-                document.getElementById('agentGroups').innerHTML = '<div class="no-data">No agents data</div>';
             }
 
             // Update scraper info

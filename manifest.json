@@ -1,6 +1,6 @@
 {
-    "name": "FL Monitoring",
-    "short_name": "FL Monitor",
+    "name": "Watchtower",
+    "short_name": "Watchtower",
     "description": "Real-time agent monitoring dashboard",
     "start_url": "/fl-monitoring-dashboard/",
     "display": "standalone",
