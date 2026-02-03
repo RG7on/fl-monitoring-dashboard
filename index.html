@@ -689,6 +689,9 @@
         <div style="margin-top: 4px; opacity: 0.6;">Real-time • No refresh needed</div>
     </footer>
 
+    <!-- NoSleep.js for iOS compatibility -->
+    <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -709,9 +712,42 @@
 
         let lastUpdateTime = null;
         let expandedCallTypes = new Set();
+        let noSleep = null;
         let wakeLock = null;
+        let keepAwakeEnabled = false;
 
-        // Wake Lock - Keep screen awake
+        // Initialize NoSleep.js (works better on iOS)
+        function initKeepAwake() {
+            try {
+                noSleep = new NoSleep();
+                
+                // Enable on first user interaction
+                const enableOnInteraction = () => {
+                    if (!keepAwakeEnabled) {
+                        // Try NoSleep.js first (best for iOS)
+                        noSleep.enable();
+                        keepAwakeEnabled = true;
+                        console.log('NoSleep enabled');
+                        
+                        // Also try Wake Lock API for Android
+                        requestWakeLock();
+                        
+                        // Remove listeners after first interaction
+                        document.removeEventListener('touchstart', enableOnInteraction);
+                        document.removeEventListener('click', enableOnInteraction);
+                    }
+                };
+                
+                // Listen for first user interaction
+                document.addEventListener('touchstart', enableOnInteraction, { once: true });
+                document.addEventListener('click', enableOnInteraction, { once: true });
+                
+            } catch (err) {
+                console.error('NoSleep init error:', err);
+            }
+        }
+
+        // Wake Lock API for modern Android browsers
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
@@ -729,37 +765,18 @@
 
         // Re-acquire wake lock when page becomes visible
         document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
+            if (document.visibilityState === 'visible' && keepAwakeEnabled) {
+                if (wakeLock !== null) {
+                    await requestWakeLock();
+                }
+                if (noSleep && !noSleep.isEnabled) {
+                    noSleep.enable();
+                }
             }
         });
 
-        // iOS fallback - use a hidden video trick
-        function iosKeepAwake() {
-            const video = document.createElement('video');
-            video.setAttribute('playsinline', '');
-            video.setAttribute('muted', '');
-            video.style.position = 'fixed';
-            video.style.opacity = '0';
-            video.style.pointerEvents = 'none';
-            video.style.width = '1px';
-            video.style.height = '1px';
-            
-            // Create a very short silent video data URL
-            video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrQYF//+p3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkwMSA3ZDBmZjIyIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxOCAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD00MCByYz1jcmYgbWJ0cmVlPTEgY3JmPTI4LjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAAwZYiEAD//8m+P5OXfBeLGOfKE3xkODvFZuBflHv/+VwJIta2aNa6fYAAAAwAAAwAAFgn0I=';
-            
-            document.body.appendChild(video);
-            video.loop = true;
-            video.play().catch(e => console.log('iOS keepAwake video failed:', e));
-        }
-
-        // Initialize wake lock on page load
-        requestWakeLock();
-        
-        // Also try iOS fallback
-        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-            iosKeepAwake();
-        }
+        // Initialize keep-awake on page load
+        initKeepAwake();
 
         // Icon map for call types
         const iconMap = {
