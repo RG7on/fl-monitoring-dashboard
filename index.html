@@ -551,6 +551,31 @@
             color: var(--text-secondary);
         }
 
+        /* Keep Awake Toggle Button */
+        .keep-awake-btn {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .keep-awake-btn.on {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .keep-awake-btn .icon {
+            font-size: 14px;
+        }
+
         /* Offline Banner */
         .offline-banner {
             position: fixed;
@@ -619,10 +644,10 @@
                     <span class="tagline">Call Center Monitor</span>
                 </div>
             </div>
-            <div class="live-indicator">
-                <div class="live-dot" id="statusDot"></div>
-                <span id="statusText">Connecting</span>
-            </div>
+            <button class="keep-awake-btn off" id="keepAwakeBtn" onclick="toggleKeepAwake()">
+                <span class="icon">🌙</span>
+                <span id="keepAwakeText">Keep Awake OFF</span>
+            </button>
         </div>
     </header>
 
@@ -716,67 +741,118 @@
         let wakeLock = null;
         let keepAwakeEnabled = false;
 
-        // Initialize NoSleep.js (works better on iOS)
-        function initKeepAwake() {
-            try {
-                noSleep = new NoSleep();
-                
-                // Enable on first user interaction
-                const enableOnInteraction = () => {
-                    if (!keepAwakeEnabled) {
-                        // Try NoSleep.js first (best for iOS)
-                        noSleep.enable();
-                        keepAwakeEnabled = true;
+        // Initialize NoSleep
+        try {
+            noSleep = new NoSleep();
+        } catch(e) {
+            console.log('NoSleep init failed:', e);
+        }
+
+        // Toggle function - must be in global scope
+        window.toggleKeepAwake = async function() {
+            const btn = document.getElementById('keepAwakeBtn');
+            const text = document.getElementById('keepAwakeText');
+            
+            if (!keepAwakeEnabled) {
+                // Enable keep awake
+                try {
+                    // Try NoSleep.js (best for iOS)
+                    if (noSleep) {
+                        await noSleep.enable();
                         console.log('NoSleep enabled');
-                        
-                        // Also try Wake Lock API for Android
-                        requestWakeLock();
-                        
-                        // Remove listeners after first interaction
-                        document.removeEventListener('touchstart', enableOnInteraction);
-                        document.removeEventListener('click', enableOnInteraction);
                     }
-                };
+                    
+                    // Also try Wake Lock API (for Android)
+                    if ('wakeLock' in navigator) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        console.log('Wake Lock acquired');
+                    }
+                    
+                    // Also create our own video as backup for iOS
+                    createiOSVideo();
+                    
+                    keepAwakeEnabled = true;
+                    btn.classList.remove('off');
+                    btn.classList.add('on');
+                    text.textContent = 'Keep Awake ON';
+                    btn.querySelector('.icon').textContent = '☀️';
+                    
+                } catch (err) {
+                    console.error('Keep awake error:', err);
+                    alert('Could not enable keep awake: ' + err.message);
+                }
+            } else {
+                // Disable keep awake
+                if (noSleep) {
+                    noSleep.disable();
+                }
+                if (wakeLock) {
+                    wakeLock.release();
+                    wakeLock = null;
+                }
+                removeiOSVideo();
                 
-                // Listen for first user interaction
-                document.addEventListener('touchstart', enableOnInteraction, { once: true });
-                document.addEventListener('click', enableOnInteraction, { once: true });
-                
-            } catch (err) {
-                console.error('NoSleep init error:', err);
+                keepAwakeEnabled = false;
+                btn.classList.remove('on');
+                btn.classList.add('off');
+                text.textContent = 'Keep Awake OFF';
+                btn.querySelector('.icon').textContent = '🌙';
+            }
+        };
+
+        // iOS video backup method
+        function createiOSVideo() {
+            if (document.getElementById('iosKeepAwakeVideo')) return;
+            
+            const video = document.createElement('video');
+            video.id = 'iosKeepAwakeVideo';
+            video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
+            video.setAttribute('muted', '');
+            video.muted = true;
+            video.loop = true;
+            video.style.cssText = 'position:fixed;bottom:0;left:0;width:10px;height:10px;opacity:0.01;pointer-events:none;z-index:-1;';
+            
+            // Use a 1-second silent video
+            video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAA3RtZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1NSByMjkxNyAwYTg0ZDk4IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxOCAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTMgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTEwIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAARmWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAIDTmtrklFgAAAAMAGsE0AFAAB1IC7y8AAO4A5x1hAAAAA0BAAAAHQZokbEL/AAADAADYAAAAB0GeQniH/wAAAwAAFgAAAAdBnmF0Qn8AAADYAAAAB0GaZmpCfwAAAwAAWAAAAAdBnqVFNEJ/AAAA2AAAAAdBnsZqQn8AAABZAAAADEGa60moQWiZTAh///6MAAAACkGfCkURLCP/AAAA2AAAAAdBnyl0Qj8AAABZAAAACkGfK2pCPwAAAQAAAAgBnywBAAACWAAAAAxBmzBJqEFomUwIf//+jAAAAApBn05FESP/AAAAWAAAAAgBn210Qn8AAAJZAAAACAGfb2pCfwAAAlkAAAAMQZt0SahBaJlMCH///owAAAAKQZ+SRRUkI/8AAABZAAAACAGfsXRCPwAAAlkAAAAIAZ+zakJ/AAADWQAAABBBm7hJqEFomUwIf//+jAAAAApBn9ZFFSP/AAAAWQAAAAgBn/V0Qn8AAAJZAAAACAGf92pCfwAAAlkAAAAPQZv8SahBaJlMCH///owAAAAJQZ4aRRUj/wAAAFkAAAAHAZ45dEI/AAACWQAAAAUBAAAAB0GeO2pCPwAAA1kAAAHVbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAQB0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAgAAAAIAAAAAACYbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAA8AAAAPABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABQ21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAPNzdGJsAAAAl3N0c2QAAAAAAAAAAQAAAIdhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAACAAIAEgAAABIAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY//8AAAAxYXZjQwFkAAr/4QAYZ2QACqzZQo35IQAAAwAEAAADAMg8SJZYAQAGaOvjyyLA/fj4AAAAABRidHJ0AAAAAAAAAIgAAACIAAAAGHN0dHMAAAAAAAAAAQAAAAoAAAABAAAAFHN0c3MAAAAAAAAAAQAAAAEAAAA4Y3R0cwAAAAAAAAAJAAAABAAAAAAAAAABAAAAAQAAAAAAAAABAAAAAQAAAAAAAAABAAAAAAAAAAEAAAABAAAAaHN0c2MAAAAAAAAAAQAAAAEAAAAKAAAAAQAAADxzdHN6AAAAAAAAAAAAAAAKAAAAHgAAAAsAAAALAAAACwAAAAwAAAAMAAAACwAAAAsAAAALAAAAFHN0Y28AAAAAAAAAAQAAADAAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjU4LjI5LjEwMA==';
+            
+            document.body.appendChild(video);
+            
+            // Play with promise handling
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('iOS video playing');
+                }).catch(e => {
+                    console.log('iOS video play failed:', e);
+                });
             }
         }
 
-        // Wake Lock API for modern Android browsers
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock acquired');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock released');
-                    });
-                }
-            } catch (err) {
-                console.error('Wake Lock error:', err);
+        function removeiOSVideo() {
+            const video = document.getElementById('iosKeepAwakeVideo');
+            if (video) {
+                video.pause();
+                video.remove();
             }
         }
 
         // Re-acquire wake lock when page becomes visible
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible' && keepAwakeEnabled) {
-                if (wakeLock !== null) {
-                    await requestWakeLock();
-                }
-                if (noSleep && !noSleep.isEnabled) {
-                    noSleep.enable();
+                try {
+                    if ('wakeLock' in navigator) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    }
+                    if (noSleep) {
+                        noSleep.enable();
+                    }
+                    createiOSVideo();
+                } catch(e) {
+                    console.log('Re-enable failed:', e);
                 }
             }
         });
-
-        // Initialize keep-awake on page load
-        initKeepAwake();
 
         // Icon map for call types
         const iconMap = {
