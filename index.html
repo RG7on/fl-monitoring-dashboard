@@ -231,6 +231,11 @@
         }
 
         .stat-card.queue .stat-value { color: var(--accent-blue); }
+        .stat-card.queue .stat-value.has-queue { color: var(--accent-red); }
+        .stat-card.queue .stat-value.no-queue { 
+            font-size: 16px;
+            margin-top: 8px;
+        }
         .stat-card.agents .stat-value { color: var(--accent-green); }
         .stat-card.abandoned .stat-value { color: var(--accent-red); }
 
@@ -369,8 +374,6 @@
         .mini-stat-value.blue { color: var(--accent-blue); }
         .mini-stat-value.green { color: var(--accent-green); }
         .mini-stat-value.red { color: var(--accent-red); }
-        .mini-stat-value.cyan { color: var(--accent-cyan); }
-        .mini-stat-value.yellow { color: var(--accent-yellow); }
         .mini-stat-value.purple { color: var(--accent-purple); }
 
         .mini-stat-label {
@@ -928,7 +931,19 @@
 
             // Update totals with animation
             if (data.totals) {
-                animateValue('totalQueue', data.totals.total_queue_now || 0);
+                const queueCount = parseInt(data.totals.total_queue_now) || 0;
+                const queueEl = document.getElementById('totalQueue');
+                
+                if (queueCount === 0) {
+                    queueEl.textContent = 'No Queue';
+                    queueEl.classList.remove('has-queue');
+                    queueEl.classList.add('no-queue');
+                } else {
+                    queueEl.textContent = queueCount;
+                    queueEl.classList.remove('no-queue');
+                    queueEl.classList.add('has-queue');
+                }
+                
                 animateValue('totalAgents', data.totals.total_cce_agent_now || 0);
                 animateValue('totalAbandoned', data.totals.total_aban_today || 0);
             }
@@ -1005,11 +1020,11 @@
                             </div>
                             <div class="agent-stats-row">
                                 <div class="mini-stat">
-                                    <div class="mini-stat-value cyan">${readyCount}</div>
+                                    <div class="mini-stat-value green">${readyCount}</div>
                                     <div class="mini-stat-label">Ready</div>
                                 </div>
                                 <div class="mini-stat">
-                                    <div class="mini-stat-value yellow">${notReadyCount}</div>
+                                    <div class="mini-stat-value red">${notReadyCount}</div>
                                     <div class="mini-stat-label">Not Ready</div>
                                 </div>
                                 <div class="mini-stat">
