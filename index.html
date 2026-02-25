@@ -720,23 +720,8 @@
     <!-- NoSleep.js for iOS compatibility -->
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBTu9pCOv7URAED3566XOr0RwMZ-AeysTI",
-            authDomain: "fl-dashboard-monitoring.firebaseapp.com",
-            databaseURL: "https://fl-dashboard-monitoring-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "fl-dashboard-monitoring",
-            storageBucket: "fl-dashboard-monitoring.firebasestorage.app",
-            messagingSenderId: "474990046608",
-            appId: "1:474990046608:web:5ea6af750f937b08695715"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const dashboardRef = ref(database, 'dashboard_data');
+    <script>
+        const DB_URL = "https://fl-dashboard-monitoring-default-rtdb.asia-southeast1.firebasedatabase.app/dashboard_data.json?auth=__FIREBASE_SECRET__";
 
         let lastUpdateTime = null;
         let expandedCallTypes = new Set();
@@ -890,22 +875,33 @@
             document.getElementById('offlineBanner').classList.add('show');
         });
 
-        // Real-time listener
-        onValue(dashboardRef, (snapshot) => {
-            const data = snapshot.val();
-            
-            if (data) {
-                updateDashboard(data);
-                updateStatus('active', 'Live');
-                lastUpdateTime = Date.now();
-                document.getElementById('staleWarning').classList.remove('show');
-            } else {
-                updateStatus('error', 'No data');
+        // REST API polling (uses database secret for auth)
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch(DB_URL);
+                if (!response.ok) {
+                    console.error('Firebase fetch error:', response.status, response.statusText);
+                    updateStatus('error', 'Error');
+                    return;
+                }
+                const data = await response.json();
+                if (data) {
+                    updateDashboard(data);
+                    updateStatus('active', 'Live');
+                    lastUpdateTime = Date.now();
+                    document.getElementById('staleWarning').classList.remove('show');
+                } else {
+                    updateStatus('error', 'No data');
+                }
+            } catch (error) {
+                console.error('Firebase error:', error);
+                updateStatus('error', 'Error');
             }
-        }, (error) => {
-            console.error('Firebase error:', error);
-            updateStatus('error', 'Error');
-        });
+        }
+
+        // Initial fetch then poll every 10 seconds
+        fetchDashboardData();
+        setInterval(fetchDashboardData, 10000);
 
         function formatDisplayName(name) {
             const nameMap = {
